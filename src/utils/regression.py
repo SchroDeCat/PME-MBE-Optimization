@@ -1,6 +1,6 @@
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from src import SGLD
+from src import SGLD, LargeFeatureExtractor, GPRegressionModel, ExactGPRegressionModel, RFFGPRegressionModel
 from typing import Any, Tuple, List
 import numpy as np
 import pandas as pd
@@ -93,24 +93,59 @@ def train_seq_nn(model:torch.nn.Module, train_x:torch.tensor, train_y: torch.ten
     model.eval()
     return model
 
-def train_dk(model:Any, **kwargs: Any)->Any:
+def train_dk(train_x:torch.tensor, train_y:torch.tensor, **kwargs: Any)->Any:
     '''
     Train a deep kernel GP
     input:
-    @model: given deep kernel GP
         @train_x: train set input
         @train_y: train set label
     Return:
         @model: trained model
     '''
-    model.train()
-    model.likelihood.train()
-
     loss_type = kwargs.get('loss_type', 'nll')
     train_iter = kwargs.get('train_iter', 10)
     lr = kwargs.get('learning_rate', 1e-6)
     verbose = kwargs.get('verbose', False)
+    low_dim = kwargs.get('low_dim', True)
     gp_type = kwargs.get('gp_type', 'dk')
+    noise_constraint = kwargs.get('noise_constraint', None)
+    output_scale_constraint = kwargs.get('output_scale_constraint', None)
+
+    # Create the Gaussian process regression model
+    data_dim = train_x.size(1)
+    likelihoods = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=noise_constraint)
+    if  gp_type == 'dk':
+        _spectrum_norm = kwargs.get('spectrum_norm', False)
+        feature_extractor = LargeFeatureExtractor(data_dim, low_dim, spectrum_norm=_spectrum_norm)
+        model = GPRegressionModel(
+                        train_x=train_x,
+                        train_y=train_y, 
+                        gp_likelihood=likelihoods,
+                        gp_feature_extractor=feature_extractor, 
+                        low_dim=low_dim, 
+                        output_scale_constraint=output_scale_constraint,
+                    )
+    elif gp_type == 'gp_exact':
+        model = ExactGPRegressionModel(
+                        train_x=train_x,
+                        train_y=train_y, 
+                        gp_likelihood=likelihoods,
+                        low_dim=low_dim, 
+                        output_scale_constraint=output_scale_constraint,
+                    )
+    elif gp_type == 'rff':
+        model = RFFGPRegressionModel(
+                        train_x=train_x,
+                        train_y=train_y, 
+                        gp_likelihood=likelihoods,
+                        low_dim=low_dim, 
+                        output_scale_constraint=output_scale_constraint,
+        )
+    else:
+        raise NotImplementedError(f'gp_type {gp_type} not implemented')
+
+    model.train()
+    model.likelihood.train()
 
     # optimizer
     if gp_type == 'dk':
@@ -155,19 +190,19 @@ def train_dk(model:Any, **kwargs: Any)->Any:
 
         if verbose:
             if gp_type == 'dk':
-                iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.base_kernel.lengthscale.item()})
+                # iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.base_kernel.lengthscale.item()})
+                iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.lengthscale.detach()})
             elif gp_type == 'gp_exact':
-                iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.lengthscale})
+                iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.lengthscale.detach()})
             else:
                 iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item()})                
 
     return model
 
-def cross_validation(model:Any, train_x:torch.tensor, train_y:torch.tensor, **kwargs: Any)->Tuple[torch.tensor]:
+def cross_validation(train_x:torch.tensor, train_y:torch.tensor, **kwargs: Any)->Tuple[torch.tensor]:
     '''
     Cross validation on given model
     Input:
-        @model: given model implemented by pytorch/GPyTorch
         @train_x: train set input
         @train_y: train set label
     Return:
@@ -184,7 +219,7 @@ def cross_validation(model:Any, train_x:torch.tensor, train_y:torch.tensor, **kw
     _loss_type = kwargs.get('loss_type', 'mse')
     _train_iter = kwargs.get('train_iter', 10)
     _lr = kwargs.get('learning_rate', 1e-6)
-    _model_type = kwargs.get('model_type', 'dk')
+    _model_type = kwargs.get('model_type', 'gp')
     _batch_size = kwargs.get('batch_size', train_x.size(0))
     _verbose = kwargs.get('verbose', False)
 
@@ -198,11 +233,14 @@ def cross_validation(model:Any, train_x:torch.tensor, train_y:torch.tensor, **kw
         X_train, X_test = train_x[train_index], train_x[test_index]
         y_train, y_test = train_y[train_index], train_y[test_index]
 
-        if _model_type.lower() == 'dk':
+        if _model_type.lower() == 'gp':
             gp_type = kwargs.get('gp_type', 'dk')
-            model = train_dk(model=model, loss_type='nll', train_iter=_train_iter, learning_rate=_lr, gp_type=gp_type, verbose=_verbose)
+            noise_constraint = kwargs.get('noise_constraint', None)
+            output_scale_constraint = kwargs.get('output_scale_constraint', None)
+            model = train_dk(train_x=X_train, train_y=y_train, loss_type='nll', train_iter=_train_iter, learning_rate=_lr, gp_type=gp_type, verbose=_verbose, noise_constraint=noise_constraint, output_scale_constraint=output_scale_constraint)
 
         elif _model_type.lower() == 'nn':
+            model = kwargs.get('model', None)
             model = train_seq_nn(model=model, loss_type=_train_loss_type, train_x=X_train, train_y=y_train,  train_iter=_train_iter, learning_rate=_lr, batch_size=_batch_size, verbose=_verbose)
 
         else:
@@ -226,7 +264,7 @@ def cross_validation(model:Any, train_x:torch.tensor, train_y:torch.tensor, **kw
         test_loss.append(loss_func(y_pred, y_test).item())
 
     if _verbose:
-        print(f"{_k}-Fold Cross validation train loss: {train_loss}")
-        print(f"{_k}-Fold Cross validation test loss: {test_loss}")
+        print(f"{_k}-Fold Cross validation train loss {_loss_type.lower()}: {train_loss}")
+        print(f"{_k}-Fold Cross validation test loss {_loss_type.lower()}: {test_loss}")
 
     return torch.tensor(train_loss).mean(), torch.tensor(test_loss).mean()

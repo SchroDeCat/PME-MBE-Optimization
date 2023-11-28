@@ -21,16 +21,25 @@ class GPRegressionModel(gpytorch.models.ExactGP):
             
             super(GPRegressionModel, self).__init__(train_x, train_y, gp_likelihood)
             self.feature_extractor = gp_feature_extractor
-            output_scale = output_scale_constraint if output_scale_constraint else None
+            # output_scale = output_scale_constraint if output_scale_constraint else None
+            output_scale = output_scale_constraint if output_scale_constraint else gpytorch.constraints.Interval(0.7,5.0)
             try: # gpytorch 1.6.0 support
                 self.mean_module = gpytorch.means.ConstantMean(constant_prior=train_y.mean())
             except Exception: # gpytorch 1.9.1
                 self.mean_module = gpytorch.means.ConstantMean()
             if low_dim:
-                self.covar_module = gpytorch.kernels.GridInterpolationKernel(
-                    gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=1), 
-                    outputscale_constraint=output_scale,),
-                    num_dims=1, grid_size=1000)
+                # self.covar_module = gpytorch.kernels.GridInterpolationKernel(
+                #     gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=1), 
+                #     outputscale_constraint=output_scale,),
+                #     num_dims=1, grid_size=1000)
+                length_scale = gpytorch.constraints.Interval(0.005, 4.0)
+                self.covar_module = gpytorch.kernels.ScaleKernel(  # Use the same lengthscale prior as in the TuRBO paper
+                                        gpytorch.kernels.MaternKernel(
+                                            nu=2.5, 
+                                            ard_num_dims=train_x.size(-1), 
+                                            lengthscale_constraint=length_scale,
+                                        ), 
+                                    outputscale_constraint=output_scale,)
             else:
                 self.covar_module = gpytorch.kernels.LinearKernel(num_dims=10)
 
