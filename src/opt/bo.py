@@ -58,20 +58,20 @@ class BO():
         # init model
         self.likelihood = gpytorch.likelihoods.GaussianLikelihood(noise_constraint=self.noise_constraint)
         if  self.gp_type == 'exact_gp':
-            self.feature_extractor = LargeFeatureExtractor(self.data_dim, self.low_dim, spectrum_norm=self.spectrum_norm)
             self.model = ExactGPRegressionModel(
                             train_x=self.train_x,
                             train_y=self.train_y, 
                             gp_likelihood=self.likelihoods,
-                            gp_feature_extractor=self.feature_extractor, 
                             low_dim=self.low_dim, 
                             output_scale_constraint=self.noise_constraint,
                         )
         elif self.gp_type == 'dk':
+            self.feature_extractor = LargeFeatureExtractor(self.data_dim, self.low_dim, spectrum_norm=self.spectrum_norm)
             self.model = GPRegressionModel(
                             train_x=self.train_x,
                             train_y=self.train_y, 
                             gp_likelihood=self.likelihoods,
+                            gp_feature_extractor=self.feature_extractor, 
                             low_dim=self.low_dim, 
                             output_scale_constraint=self.noise_constraint,
                         )
