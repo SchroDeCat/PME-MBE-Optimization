@@ -120,7 +120,8 @@ def train_dk(model:Any, **kwargs: Any)->Any:
             {'params': model.mean_module.parameters()},
             {'params': model.likelihood.parameters()},
         ]
-        optimizer = SGLD(params, lr=lr)
+        # optimizer = SGLD(params, lr=lr)
+        optimizer = torch.optim.Adam(params=params, lr=lr)
     else:
         params = [
             {'params': model.covar_module.parameters()},
@@ -155,6 +156,8 @@ def train_dk(model:Any, **kwargs: Any)->Any:
         if verbose:
             if gp_type == 'dk':
                 iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.base_kernel.lengthscale.item()})
+            elif gp_type == 'gp_exact':
+                iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.lengthscale})
             else:
                 iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item()})                
 
@@ -177,6 +180,7 @@ def cross_validation(model:Any, train_x:torch.tensor, train_y:torch.tensor, **kw
 
     _seed = kwargs.get('seed', 42)
     _k = kwargs.get('k', 5)
+    _train_loss_type = kwargs.get('train_loss_type', 'mlse')
     _loss_type = kwargs.get('loss_type', 'mse')
     _train_iter = kwargs.get('train_iter', 10)
     _lr = kwargs.get('learning_rate', 1e-6)
@@ -199,7 +203,7 @@ def cross_validation(model:Any, train_x:torch.tensor, train_y:torch.tensor, **kw
             model = train_dk(model=model, loss_type='nll', train_iter=_train_iter, learning_rate=_lr, gp_type=gp_type, verbose=_verbose)
 
         elif _model_type.lower() == 'nn':
-            model = train_seq_nn(model=model, train_x=X_train, train_y=y_train, loss_type=_loss_type, train_iter=_train_iter, learning_rate=_lr, batch_size=_batch_size, verbose=_verbose)
+            model = train_seq_nn(model=model, loss_type=_train_loss_type, train_x=X_train, train_y=y_train,  train_iter=_train_iter, learning_rate=_lr, batch_size=_batch_size, verbose=_verbose)
 
         else:
             raise NotImplementedError(f"{_model_type} not implemented")

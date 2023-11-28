@@ -21,7 +21,7 @@ class GPRegressionModel(gpytorch.models.ExactGP):
             
             super(GPRegressionModel, self).__init__(train_x, train_y, gp_likelihood)
             self.feature_extractor = gp_feature_extractor
-            output_scale = output_scale_constraint if output_scale_constraint else gpytorch.constraints.Interval(0.7,5.0)
+            output_scale = output_scale_constraint if output_scale_constraint else None
             try: # gpytorch 1.6.0 support
                 self.mean_module = gpytorch.means.ConstantMean(constant_prior=train_y.mean())
             except Exception: # gpytorch 1.9.1
@@ -30,7 +30,7 @@ class GPRegressionModel(gpytorch.models.ExactGP):
                 self.covar_module = gpytorch.kernels.GridInterpolationKernel(
                     gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel(ard_num_dims=1), 
                     outputscale_constraint=output_scale,),
-                    num_dims=1, grid_size=100)
+                    num_dims=1, grid_size=1000)
             else:
                 self.covar_module = gpytorch.kernels.LinearKernel(num_dims=10)
 
