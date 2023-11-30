@@ -29,8 +29,9 @@ if __name__ == '__main__':
 
     # strict noise constraint
     noise_constraint = gpytorch.constraints.Interval(1e-2, .1)
-    # test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=10, lr=1e-2, verbose=True, kiss_gp=True)
+    # test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=200, lr=1e-2, verbose=True, kiss_gp=True)
+    test(gp_type='dk', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=500, lr=1e-2, verbose=True, kiss_gp=True)
     # test(gp_type='dk', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=True)
     # test(gp_type='dk', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=False)
-    test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=False)
-    test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=True)
+    # test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=False)
+    # test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=True)
