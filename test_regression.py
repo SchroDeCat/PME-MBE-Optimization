@@ -17,7 +17,8 @@ def test(gp_type:str, low_dim:bool, X_attr, Y_attr, noise_constraint:Any, output
     # Perform cross-validation
     # train_loss, test_loss = cross_validation(train_x, train_y, verbose=verbose, learning_rate=lr, train_iter=train_iter, gp_type=gp_type, loss_type='l1', noise_constraint=noise_constraint, output_scale_constraint=output_scale_constraint,)
     # train_loss, test_loss = cross_validation(test_x, test_y, verbose=verbose, learning_rate=lr, train_iter=train_iter, gp_type=gp_type, loss_type='l1', noise_constraint=noise_constraint, output_scale_constraint=output_scale_constraint, low_dim=low_dim)
-    train_loss, test_loss = cross_validation(torch.cat([train_x, test_x], dim=0), torch.cat([train_y, test_y]), verbose=verbose, learning_rate=lr, train_iter=train_iter, gp_type=gp_type, loss_type='l1', noise_constraint=noise_constraint, output_scale_constraint=output_scale_constraint,)
+    train_loss, test_loss = cross_validation(torch.cat([train_x, test_x], dim=0), torch.cat([train_y, test_y]), verbose=verbose, learning_rate=lr, train_iter=train_iter, 
+                                             gp_type=gp_type, loss_type='l1', noise_constraint=noise_constraint, output_scale_constraint=output_scale_constraint, kiss_gp=kwargs.get('kiss_gp', False), low_dim=low_dim,)
 
     print(f'Cross-validation mean squared error:\t test {test_loss} \t train: {train_loss}')
 
@@ -28,5 +29,8 @@ if __name__ == '__main__':
 
     # strict noise constraint
     noise_constraint = gpytorch.constraints.Interval(1e-2, .1)
-    # test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=10, lr=1e-2, verbose=True)
-    test(gp_type='dk', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=20, lr=1e-2, verbose=True)
+    # test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=10, lr=1e-2, verbose=True, kiss_gp=True)
+    # test(gp_type='dk', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=True)
+    # test(gp_type='dk', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=False)
+    test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=False)
+    test(gp_type='gp_exact', low_dim=True, X_attr=['T_cell', 'time', 'wavelength','R_0'], Y_attr='RT', noise_constraint=noise_constraint, output_scale_constraint=None, train_iter=100, lr=1e-2, verbose=True, kiss_gp=True)
