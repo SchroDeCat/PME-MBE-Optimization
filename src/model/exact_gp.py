@@ -26,6 +26,11 @@ class ExactGPRegressionModel(gpytorch.models.ExactGP):
                                     outputscale_constraint=output_scale,)
             else:
                 self.covar_module = gpytorch.kernels.LinearKernel(num_dims=train_x.size(-1))
+            self.kiss_gp = kwargs.get('kiss_gp', False)
+            if self.kiss_gp:
+                assert low_dim
+                self.covar_module = gpytorch.kernels.GridInterpolationKernel(self.covar_module, grid_size=4, num_dims=train_x.size(-1))
+
             try: # gpytorch 1.6.0 support
                 self.mean_module = gpytorch.means.ConstantMean(constant_prior=train_y.mean())
             except Exception: # gpytorch 1.9.1

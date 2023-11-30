@@ -36,13 +36,17 @@ class GPRegressionModel(gpytorch.models.ExactGP):
                 self.covar_module = gpytorch.kernels.ScaleKernel(  # Use the same lengthscale prior as in the TuRBO paper
                                         gpytorch.kernels.MaternKernel(
                                             nu=2.5, 
-                                            ard_num_dims=train_x.size(-1), 
+                                            ard_num_dims=1, 
                                             lengthscale_constraint=length_scale,
                                         ), 
                                     outputscale_constraint=output_scale,)
             else:
                 self.covar_module = gpytorch.kernels.LinearKernel(num_dims=10)
 
+            self.kiss_gp = kwargs.get('kiss_gp', False)
+            if self.kiss_gp:
+                assert low_dim
+                self.covar_module = gpytorch.kernels.GridInterpolationKernel(self.covar_module, grid_size=100, num_dims=1)
             # This module will scale the NN features so that they're nice values
             self.scale_to_bounds = gpytorch.utils.grid.ScaleToBounds(-1., 1.)
 

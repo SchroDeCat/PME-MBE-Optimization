@@ -110,6 +110,7 @@ def train_dk(train_x:torch.tensor, train_y:torch.tensor, **kwargs: Any)->Any:
     gp_type = kwargs.get('gp_type', 'dk')
     noise_constraint = kwargs.get('noise_constraint', None)
     output_scale_constraint = kwargs.get('output_scale_constraint', None)
+    kiss_gp = kwargs.get('kiss_gp', False)
 
     # Create the Gaussian process regression model
     data_dim = train_x.size(1)
@@ -132,6 +133,7 @@ def train_dk(train_x:torch.tensor, train_y:torch.tensor, **kwargs: Any)->Any:
                         gp_likelihood=likelihoods,
                         low_dim=low_dim, 
                         output_scale_constraint=output_scale_constraint,
+                        kiss_gp=kiss_gp,
                     )
     elif gp_type == 'rff':
         model = RFFGPRegressionModel(
@@ -191,9 +193,11 @@ def train_dk(train_x:torch.tensor, train_y:torch.tensor, **kwargs: Any)->Any:
         if verbose:
             if gp_type == 'dk':
                 # iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.base_kernel.lengthscale.item()})
-                iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.lengthscale.detach()})
+                _length_scale = model.covar_module.base_kernel.lengthscale.detach() if not model.kiss_gp else model.covar_module.base_kernel.base_kernel.base_kernel.lengthscale.detach()
+                iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': _length_scale})
             elif gp_type == 'gp_exact':
-                iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': model.covar_module.base_kernel.lengthscale.detach()})
+                _length_scale = model.covar_module.base_kernel.lengthscale.detach() if not model.kiss_gp else model.covar_module.base_kernel.base_kernel.lengthscale.detach()
+                iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item(), "noise": model.likelihood.noise.item(), 'lengthscale': _length_scale})
             else:
                 iterator.set_postfix({f"Training Loss {loss_type.lower()}": loss.item()})                
 
@@ -222,6 +226,7 @@ def cross_validation(train_x:torch.tensor, train_y:torch.tensor, **kwargs: Any)-
     _model_type = kwargs.get('model_type', 'gp')
     _batch_size = kwargs.get('batch_size', train_x.size(0))
     _verbose = kwargs.get('verbose', False)
+    _kiss_gp = kwargs.get('kiss_gp', False)
 
     kf = KFold(n_splits=_k, shuffle=True, random_state=_seed)
     kf.get_n_splits(train_x)
@@ -237,7 +242,7 @@ def cross_validation(train_x:torch.tensor, train_y:torch.tensor, **kwargs: Any)-
             gp_type = kwargs.get('gp_type', 'dk')
             noise_constraint = kwargs.get('noise_constraint', None)
             output_scale_constraint = kwargs.get('output_scale_constraint', None)
-            model = train_dk(train_x=X_train, train_y=y_train, loss_type='nll', train_iter=_train_iter, learning_rate=_lr, gp_type=gp_type, verbose=_verbose, noise_constraint=noise_constraint, output_scale_constraint=output_scale_constraint)
+            model = train_dk(train_x=X_train, train_y=y_train, loss_type='nll', train_iter=_train_iter, learning_rate=_lr, gp_type=gp_type, verbose=_verbose, noise_constraint=noise_constraint, output_scale_constraint=output_scale_constraint, kiss_gp=_kiss_gp)
 
         elif _model_type.lower() == 'nn':
             model = kwargs.get('model', None)
